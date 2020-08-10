@@ -6,11 +6,12 @@ from tkinter import ttk
 import select
 import errno
 
-#socket
+#socket constants
 HEADER_LENGTH = 10
 IP = "127.0.0.1"
 PORT = 1234
 
+#socket initialisation
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client_socket.connect((IP, PORT))
 client_socket.setblocking(False)
@@ -23,40 +24,49 @@ def chat_window():
     print("I work")
     connect(e1.get())
 
+#send message function
 def send(message): 
     if message:
         # Encode message to bytes, prepare header and convert to bytes, like for username above, then send
         message = message.encode('utf-8')
+        #organising the message and preparing it for sending
+        #Note: Username not needed because the server saves the username as long as you're connected
         message_header = f"{len(message):<{HEADER_LENGTH}}".encode('utf-8')
+        #Sending message
         client_socket.send(message_header + message)
 
+#function to connect to server. This should be the first function to be executed before sending/receiving
 def connect(my_username):
+    #Setting username
     username = my_username.encode('utf-8')
     username_header = f"{len(username):<{HEADER_LENGTH}}".encode('utf-8')
+    #sending username to server
     client_socket.send(username_header + username)
 
+#function to receive messages
 def receive():
     try:
         while True:
             username_header = client_socket.recv(HEADER_LENGTH)
-
+            #if we stop receiving data, the server is most likely down
             if not len(username_header):
                 ret = "connection closed by server"
                 print(ret)
+                sys.exit() #this is prone to change
                 return ret
-                sys.exit()
-            
+                            
+            #receiving username of sender
             username_length = int(username_header.decode('utf-8').strip())
-
+            
             username = client_socket.recv(username_length).decode('utf-8')
-
+            #Receiving message
             message_header = client_socket.recv(HEADER_LENGTH)
             message_length = int(message_header.decode('utf-8').strip())
             message = client_socket.recv(message_length).decode('utf-8')
 
             ret = f'{username} > {message}'
             return ret
-
+    #for sake of practice and hassle-free operation
     except IOError as e:
         if e.errno != errno.EAGAIN and e.errno != errno.EWOULDBLOCK:
             ret = f'Reading error: {str(e)}'
